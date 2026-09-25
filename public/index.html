@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>舞台换景排练系统</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎭 舞台换景排练系统</h1>
+    <p>设置道具初始区位 → 按提示号录入同组转移 → 全量重放校验，整组通过才生效</p>
+  </header>
+
+  <main>
+    <!-- 一、区位与道具 -->
+    <section class="row">
+      <div class="card">
+        <h2>① 区位</h2>
+        <p class="hint">「后台」容量不限，其余区位各容纳一件道具。</p>
+        <ul id="location-list" class="tag-list"></ul>
+        <form id="location-form" class="inline-form">
+          <input id="location-name" type="text" placeholder="新区位名称" required />
+          <button type="submit">添加区位</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>② 道具与初始区位</h2>
+        <table class="table">
+          <thead><tr><th>道具</th><th>初始区位</th><th></th></tr></thead>
+          <tbody id="prop-rows"></tbody>
+        </table>
+        <form id="prop-form" class="inline-form">
+          <input id="prop-name" type="text" placeholder="新道具名称" required />
+          <select id="prop-location" required></select>
+          <button type="submit">添加道具</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 二、提示录入 -->
+    <section class="row">
+      <div class="card wide">
+        <h2>③ 录入提示（一组同时发生的转移）</h2>
+        <p class="hint">提示号唯一；同组内每件道具最多转移一次；整组校验通过才生效，允许同组互换区位。</p>
+        <form id="cue-form">
+          <div class="inline-form">
+            <label>提示号 <input id="cue-number" type="number" min="1" step="1" required /></label>
+            <label class="grow">备注 <input id="cue-note" type="text" placeholder="可选，如：一幕开场" /></label>
+          </div>
+          <table class="table">
+            <thead><tr><th>道具</th><th>来源区位</th><th>目标区位</th><th></th></tr></thead>
+            <tbody id="transfer-rows"></tbody>
+          </table>
+          <div class="btn-row">
+            <button type="button" id="add-transfer" class="ghost">＋ 添加一条转移</button>
+            <span class="spacer"></span>
+            <button type="button" id="cue-preview" class="ghost">🧪 试排预览（不保存）</button>
+            <button type="submit" id="cue-submit">保存提示</button>
+            <button type="button" id="cue-cancel" class="ghost hidden">取消编辑</button>
+          </div>
+        </form>
+        <div id="cue-preview-panel" class="preview-panel hidden"></div>
+      </div>
+    </section>
+
+    <!-- 三、提示列表 + 重放结果 -->
+    <section class="row">
+      <div class="card">
+        <h2>④ 提示序列（按提示号重放）</h2>
+        <div class="shift-box">
+          <h3>批量平移提示号</h3>
+          <p class="hint">输入闭区间起止号与非零整数位移，先「预览平移」列出每条提示的原号→新号；校验通过（区间非空、新号均为安全正整数且不与区间外提示号冲突）后方可执行，执行在单个事务中完成并全量重放。</p>
+          <form id="shift-form" class="inline-form">
+            <label>起始号 <input id="shift-from" type="number" min="1" step="1" required /></label>
+            <label>结束号 <input id="shift-to" type="number" min="1" step="1" required /></label>
+            <label>位移 <input id="shift-delta" type="number" step="1" placeholder="非零整数" required /></label>
+            <button type="button" id="shift-preview" class="ghost">预览平移</button>
+            <button type="submit" id="shift-apply" class="danger" disabled>执行平移</button>
+          </form>
+          <div id="shift-preview-panel" class="preview-panel hidden"></div>
+        </div>
+        <div id="cue-list"></div>
+      </div>
+      <div class="card">
+        <h2>⑤ 重放结果与最终区位</h2>
+        <div id="replay-results"></div>
+        <h3>最终区位</h3>
+        <div id="final-board" class="board"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
