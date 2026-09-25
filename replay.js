@@ -9,6 +9,12 @@
  *  - 整组应用后，除「后台」外任一区位不得被多件道具占用（允许同组互换）；
  *  - 任一条校验失败则整组不生效，状态保持变动前，并记录全部冲突原因。
  *
+ * 冲突溯源（trace，随提示号顺序更新，失败组不改变位置与溯源）：
+ *  - source：来源区位不符的转移，给出道具当前区位与最后一次成功转移的提示号
+ *    （lastSuccess 为 null 表示从未成功转移，即仍在初始区位）；
+ *  - capacity：容量冲突的区位，列出试算后同占该区位的道具，标明各道具是否由
+ *    本组转入（movedByThisCue）及其此前最后一次成功转移的提示号（组前溯源状态）。
+ *
  * @param {Array<{name:string, unlimited:boolean}>} locations
  * @param {Array<{name:string, location:string}>}   props
  * @param {Array<{number:number, note:string, transfers:Array<{prop:string, from:string, to:string}>}>} cues 已按提示号升序
@@ -21,10 +27,16 @@ function replay(locations, props, cues) {
   const state = {};
   for (const p of props) state[p.name] = p.location;
 
+  // 溯源状态：道具 -> 最后一次成功转移的提示号（null = 从未成功转移，仍在初始区位）
+  const lastSuccess = {};
+  for (const p of props) lastSuccess[p.name] = null;
+
   const results = [];
 
   for (const cue of cues) {
     const errors = [];
+    // 结构化溯源：与 errors 并列，随每组结果返回（本组校验均基于组前状态）
+    const trace = { source: [], capacity: [] };
 
     // 1) 同组内同一道具不得出现多次（数据库有唯一约束，这里兜底防御）
     const seen = new Set();
@@ -33,12 +45,18 @@ function replay(locations, props, cues) {
       seen.add(t.prop);
     }
 
-    // 2) 基于变动前状态校验来源
+    // 2) 基于变动前状态校验来源；来源不符时记录道具当前区位与最后成功转移的提示号
     for (const t of cue.transfers) {
       if (!(t.prop in state)) {
         errors.push(`道具「${t.prop}」不存在`);
       } else if (state[t.prop] !== t.from) {
         errors.push(`道具「${t.prop}」当前位于「${state[t.prop]}」，不在来源区位「${t.from}」`);
+        trace.source.push({
+          prop: t.prop,
+          from: t.from,
+          current: state[t.prop],
+          lastSuccess: lastSuccess[t.prop],
+        });
       }
       if (!locDef.has(t.to)) {
         errors.push(`目标区位「${t.to}」不存在`);
@@ -51,6 +69,9 @@ function replay(locations, props, cues) {
       next = { ...state };
       for (const t of cue.transfers) next[t.prop] = t.to;
 
+      const movedTo = new Map(); // 道具 -> 本组目标区位（标记「本组转入」用）
+      for (const t of cue.transfers) movedTo.set(t.prop, t.to);
+
       const occupancy = new Map(); // 区位 -> [道具]
       for (const [prop, loc] of Object.entries(next)) {
         if (!occupancy.has(loc)) occupancy.set(loc, []);
@@ -62,17 +83,27 @@ function replay(locations, props, cues) {
           errors.push(
             `区位「${loc}」容量为一件，本组完成后将被 ${occupants.map((p) => `「${p}」`).join('、')} 同时占用`
           );
+          // 容量冲突溯源：试算后同占该区位的道具（溯源信息取组前状态）
+          trace.capacity.push({
+            location: loc,
+            occupants: occupants.map((p) => ({
+              prop: p,
+              movedByThisCue: movedTo.get(p) === loc,
+              lastSuccess: lastSuccess[p],
+            })),
+          });
         }
       }
     }
 
     if (errors.length === 0 && next) {
-      // 整组通过才提交
+      // 整组通过才提交：位置与溯源一并更新
       Object.assign(state, next);
-      results.push({ number: cue.number, note: cue.note, ok: true, errors: [], transfers: cue.transfers });
+      for (const t of cue.transfers) lastSuccess[t.prop] = cue.number;
+      results.push({ number: cue.number, note: cue.note, ok: true, errors: [], transfers: cue.transfers, trace });
     } else {
-      // 整组不生效，状态回滚（保持不变）
-      results.push({ number: cue.number, note: cue.note, ok: false, errors, transfers: cue.transfers });
+      // 整组不生效，状态回滚（位置与溯源均保持不变）
+      results.push({ number: cue.number, note: cue.note, ok: false, errors, transfers: cue.transfers, trace });
     }
   }
 
@@ -110,8 +141,8 @@ function diffReplays(before, after) {
       changedCues.push({
         number,
         note: (a || b).note,
-        before: b ? { ok: b.ok, errors: b.errors } : null,
-        after: a ? { ok: a.ok, errors: a.errors } : null,
+        before: b ? { ok: b.ok, errors: b.errors, trace: b.trace } : null,
+        after: a ? { ok: a.ok, errors: a.errors, trace: a.trace } : null,
       });
     }
   }

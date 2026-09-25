@@ -118,6 +118,18 @@ button.link { background: none; border: none; color: var(--accent2); padding: 2p
 .arrow { color: var(--accent2); padding: 0 6px; }
 .cue-errors { margin: 8px 0 0; color: var(--err); font-size: 13px; }
 .cue-errors li { margin: 2px 0; }
+
+/* 冲突溯源（失败提示旁） */
+.cue-trace {
+  margin-top: 8px;
+  border-top: 1px dashed var(--line);
+  padding-top: 6px;
+  font-size: 13px;
+}
+.trace-group { margin: 4px 0; }
+.trace-title { color: var(--accent2); font-size: 12px; margin-bottom: 2px; }
+.cue-trace ul { margin: 2px 0 4px; padding-left: 18px; color: var(--muted); }
+.cue-trace li { margin: 2px 0; }
 .cue-actions { margin-top: 8px; display: flex; gap: 6px; }
 
 /* 最终区位看板 */

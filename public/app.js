@@ -53,6 +53,39 @@ function propOptions(selected) {
     .join('');
 }
 
+/* ---------- 冲突溯源渲染 ---------- */
+
+// 最后一次成功转移的提示号；null 表示从未成功转移（仍在初始区位）
+function lastSuccessText(n) {
+  return n === null || n === undefined ? '初始区位（从未成功转移）' : `提示 ${n}`;
+}
+
+function traceHtml(trace) {
+  if (!trace) return '';
+  const blocks = [];
+  if (trace.source && trace.source.length) {
+    blocks.push(`
+      <div class="trace-group">
+        <div class="trace-title">来源区位不符 · 溯源</div>
+        <ul>${trace.source
+          .map((s) => `<li>「${esc(s.prop)}」当前位于「${esc(s.current)}」，最后一次成功转移：${lastSuccessText(s.lastSuccess)}</li>`)
+          .join('')}</ul>
+      </div>`);
+  }
+  if (trace.capacity && trace.capacity.length) {
+    blocks.push(`
+      <div class="trace-group">
+        <div class="trace-title">容量冲突 · 溯源</div>
+        <ul>${trace.capacity
+          .map((c) => `<li>区位「${esc(c.location)}」试算后同占：${c.occupants
+            .map((o) => `「${esc(o.prop)}」（${o.movedByThisCue ? '本组转入' : '非本组转入'}，此前最后成功转移：${lastSuccessText(o.lastSuccess)}）`)
+            .join('、')}</li>`)
+          .join('')}</ul>
+      </div>`);
+  }
+  return blocks.length ? `<div class="cue-trace">${blocks.join('')}</div>` : '';
+}
+
 /* ---------- 渲染 ---------- */
 
 function renderLocations() {
@@ -128,7 +161,7 @@ function renderCues() {
         .map((t) => `<div>「${esc(t.prop)}」 ${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)}</div>`)
         .join('');
       const errors = r && !r.ok
-        ? `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>`
+        ? `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>${traceHtml(r.trace)}`
         : '';
       return `
         <div class="cue-item ${r && r.ok ? 'ok' : 'fail'}">
@@ -161,7 +194,7 @@ function renderReplay() {
             <span class="note">${esc(r.note || '')}</span>
             ${r.ok ? '<span class="badge ok">✓ 整组生效</span>' : '<span class="badge fail">✗ 整组未生效</span>'}
           </div>
-          ${r.ok ? '' : `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>`}
+          ${r.ok ? '' : `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>${traceHtml(r.trace)}`}
         </div>`)
       .join('');
   }
@@ -247,7 +280,8 @@ function statusSideHtml(side) {
   if (!side) return '<span class="pv-none">（序列中不存在）</span>';
   if (side.ok) return '<span class="badge ok">✓ 生效</span>';
   return `<span class="badge fail">✗ 未生效</span>
-    <ul class="cue-errors">${side.errors.map((e) => `<li>${esc(e)}</li>`).join('') || '<li>（无冲突原因）</li>'}</ul>`;
+    <ul class="cue-errors">${side.errors.map((e) => `<li>${esc(e)}</li>`).join('') || '<li>（无冲突原因）</li>'}</ul>
+    ${traceHtml(side.trace)}`;
 }
 
 function renderPreview(data) {
