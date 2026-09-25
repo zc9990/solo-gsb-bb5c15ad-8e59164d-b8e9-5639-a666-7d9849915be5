@@ -118,6 +118,28 @@ button.link { background: none; border: none; color: var(--accent2); padding: 2p
 .arrow { color: var(--accent2); padding: 0 6px; }
 .cue-errors { margin: 8px 0 0; color: var(--err); font-size: 13px; }
 .cue-errors li { margin: 2px 0; }
+
+/* 冲突溯源（失败提示的结构化原因） */
+.cue-trace {
+  margin-top: 8px;
+  border: 1px dashed var(--err);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: rgba(224, 92, 106, .05);
+  font-size: 13px;
+}
+.cue-trace .trace-title { color: var(--accent2); font-size: 12px; margin: 6px 0 2px; }
+.cue-trace ul { margin: 4px 0; padding-left: 18px; }
+.cue-trace li { margin: 2px 0; }
+.trace-tag {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  margin: 0 6px;
+}
+.trace-tag.dim { border-color: var(--muted); color: var(--muted); }
 .cue-actions { margin-top: 8px; display: flex; gap: 6px; }
 
 /* 最终区位看板 */

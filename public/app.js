@@ -53,6 +53,41 @@ function propOptions(selected) {
     .join('');
 }
 
+/* ---------- 冲突溯源（失败提示旁展示，lastMovedCue 为 null 表示初始区位） ---------- */
+
+function lastMovedText(cueNumber) {
+  return cueNumber === null || cueNumber === undefined
+    ? '初始区位（从未成功转移）'
+    : `提示 ${cueNumber}`;
+}
+
+function traceHtml(trace) {
+  if (!trace) return '';
+  const blocks = [];
+
+  if (trace.sourceMismatches && trace.sourceMismatches.length) {
+    blocks.push(`
+      <div class="trace-title">来源不符溯源</div>
+      <ul>${trace.sourceMismatches
+        .map((m) => `<li>「${esc(m.prop)}」当前位于「${esc(m.current)}」（最后一次成功转移：${lastMovedText(m.lastMovedCue)}），本组要求来源「${esc(m.from)}」</li>`)
+        .join('')}</ul>`);
+  }
+
+  if (trace.capacityConflicts && trace.capacityConflicts.length) {
+    for (const c of trace.capacityConflicts) {
+      blocks.push(`
+        <div class="trace-title">容量冲突溯源 · 区位「${esc(c.location)}」试算后同占道具</div>
+        <ul>${c.occupants
+          .map((o) => `<li>「${esc(o.prop)}」${o.movedIn
+            ? '<span class="trace-tag">本组转入</span>'
+            : '<span class="trace-tag dim">非本组转入</span>'}此前最后一次成功转移：${lastMovedText(o.lastMovedCue)}</li>`)
+          .join('')}</ul>`);
+    }
+  }
+
+  return blocks.length ? `<div class="cue-trace">${blocks.join('')}</div>` : '';
+}
+
 /* ---------- 渲染 ---------- */
 
 function renderLocations() {
@@ -128,7 +163,7 @@ function renderCues() {
         .map((t) => `<div>「${esc(t.prop)}」 ${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)}</div>`)
         .join('');
       const errors = r && !r.ok
-        ? `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>`
+        ? `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>${traceHtml(r.trace)}`
         : '';
       return `
         <div class="cue-item ${r && r.ok ? 'ok' : 'fail'}">
@@ -161,7 +196,7 @@ function renderReplay() {
             <span class="note">${esc(r.note || '')}</span>
             ${r.ok ? '<span class="badge ok">✓ 整组生效</span>' : '<span class="badge fail">✗ 整组未生效</span>'}
           </div>
-          ${r.ok ? '' : `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>`}
+          ${r.ok ? '' : `<ul class="cue-errors">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>${traceHtml(r.trace)}`}
         </div>`)
       .join('');
   }
